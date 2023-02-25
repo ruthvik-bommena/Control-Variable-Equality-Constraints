@@ -2,4 +2,4 @@
  General optimal programming problems with control variable equality constraint.
  
  # References
- 1. Applied Optimal Control, 1975, A.E. Bryson. Jr, Yu-Chi Ho
+ 1. A.E. Bryson. Jr, Yu-Chi Ho. Applied Optimal Control, 1975. 
