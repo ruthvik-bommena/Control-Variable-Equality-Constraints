@@ -7,9 +7,9 @@ function MinimumTime_PosDepForces
 %    Affiliation:   Department of Aerospace Engineering, University of Illinois Urbana-Champaign.
 %    Description:   Function to solve minimum-time paths through a three-dimensional 
 %                   region of position dependent forces.
-%    References:    Ch 3. Applied Optimal Control, 1975, A.E. Bryson. Jr, Yu-Chi Ho
+%    References:    Ch 3. Sec 3.2, Applied Optimal Control, 1975, A.E. Bryson. Jr, Yu-Chi Ho
 
-clear all; clc;
+clear; close all; clc;
 
 % [x; y; z; vx; vy; vz]
 x0 = [12000;5000;7500;50;10;10]; % m & m/s
@@ -23,23 +23,29 @@ area = 20; % m^2
 density = 1.225; % air density at sea level kg/m^3
 
 t0 = 0;
+
 opts_ode = odeset('RelTol',1e-13,'AbsTol',1e-15); % ode
 options = optimoptions('fsolve','Display','iter','MaxFunEvals',1e3,...
     'MaxIter',1e3,'TolFun',1e-14,'TolX',1e-16,...
     'UseParallel',true); % fsolve
 
 %% Numerical Solution 
-    if nargin < 6
-       lam0_guess = rand(7,1);
-    end 
+lam0_guess = rand(7,1);
 
-rho = .5; rho_f = 1e-5; iter = 1;
-    while rho > rho_f
-        [lam0,fval] = fsolve(@costFunction,lam0_guess,options,x0,xf,opts_ode,t0,Cd,uMax,density,area,rho,m);
-        rho = rho*0.5;
+rho = 0.5; rhoMin = 1e-05; iter = 1; err = 1; errTol = 1e-10; iterMax = 100;
+   while err > errTol && iter < iterMax
+        [lam0,~] = fsolve(@costFunction,lam0_guess,options,x0,xf,opts_ode,t0,Cd,uMax,density,area,rho,m);
+        err = norm(costFunction(lam0_guess,x0,xf,opts_ode,t0,Cd,uMax,density,area,rho,m));
         lam0_guess = lam0;
-        iter = iter + 1;
-    end
+        iter = iter+1; 
+   end
+
+   while rho > rhoMin
+       rho = rho*0.5;
+       [lam0,~] = fsolve(@costFunction,lam0,options,x0,xf,opts_ode,t0,Cd,uMax,density,area,rho,m);
+   end
+
+% Trajectory
 tf = lam0(7);
 [t_minT,X_minT] = ode45(@ThreeDimAircraft,[t0 tf],[x0; lam0(1:6)],opts_ode,Cd,uMax,density,area,rho,m);  % ode propagator
 
@@ -50,7 +56,7 @@ end
 
 
 %% Functions
-function hf = PlotSolution(X_minT,t_minT,x0,xf)
+function PlotSolution(X_minT,t_minT,x0,xf)
 
     for ii = 1:length(t_minT)
         rel_Pos(ii) = norm(X_minT(ii,1:3)-xf(1:3)');
@@ -72,7 +78,7 @@ title('Problem 2 - Relative Position of Aircraft',['x0 = ',num2str(x0(1:3)'),'  
 end 
 
 
-function Xdot = ThreeDimAircraft(t,X,Cd,uMax,density,area,rho,m)
+function Xdot = ThreeDimAircraft(~,X,Cd,uMax,density,area,rho,m)
 
 x = X(1:6);
 lambda = X(7:12);
@@ -99,7 +105,7 @@ Xdot = [xDot; lambdaDot];
 end
 
 
-function H = hamiltonian(t,X,Cd,uMax,density,area,rho,m)
+function H = hamiltonian(~,X,Cd,uMax,density,area,rho,m)
 
 x   = X(:,1:6);
 lambda = X(:,7:12)';

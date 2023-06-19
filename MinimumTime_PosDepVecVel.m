@@ -7,35 +7,36 @@ function MinimumTime_PosDepVecVel
 %    Affiliation:   Department of Aerospace Engineering, University of Illinois Urbana-Champaign.
 %    Description:   Function to solve minimum-time paths through a three-dimensional 
 %                   region of position dependent vector velocity.
-%    References:    Ch 3. Applied Optimal Control, 1975, A.E. Bryson. Jr, Yu-Chi Ho
+%    References:    Ch 3. Sec 3.2, Applied Optimal Control, 1975, A.E. Bryson. Jr, Yu-Chi Ho
 
-clear all; clc;
+clear; close all; clc;
 
 % [x; y; z]
 x0 = [12000;5000;7500]; % m
 xf = [0;0;0];
 
+t0 = 0;
+
 w = [20;0;0]; % wind velocity at 10m above the surface in m/s
 V = 50; % aircraft velocity relative to air (IAS) m/s
 
-t0 = 0;
 opts_ode = odeset('RelTol',1e-13,'AbsTol',1e-15); % ode
 options = optimoptions('fsolve','Display','iter','MaxFunEvals',1e3,...
     'MaxIter',1e3,'TolFun',1e-14,'TolX',1e-16,...
     'UseParallel',true); % fsolve
 
 %% Numerical Solution 
-    if nargin < 6
-       lam0_guess = rand(4,1);
-    end 
+lam0_guess = [0.029135187325369; 0.006863982230546; 0.010295973345819; 4.611619591507968e+02];
 
-rho = .5; rho_f = 1e-5; iter = 1;
-    while rho > rho_f
-        [lam0,fval] = fsolve(@costFunction,lam0_guess,options,x0,xf,opts_ode,w,V,t0);
-        rho = rho*0.5;
+iter = 1; err = 1; errTol = 1e-10; iterMax = 100;
+   while err > errTol && iter < iterMax
+        [lam0,~] = fsolve(@costFunction,lam0_guess,options,x0,xf,opts_ode,w,V,t0);
+        err = norm(costFunction(lam0_guess,x0,xf,opts_ode,w,V,t0));
         lam0_guess = lam0;
-        iter = iter + 1;
-    end
+        iter = iter+1; 
+   end
+
+% Trajectory
 tf = lam0(4);
 [t_minT,X_minT] = ode45(@ThreeDimAircraft,[t0 tf],[x0; lam0(1:3)],opts_ode,w,V);  % ode propagator
 
@@ -46,7 +47,7 @@ end
 
 
 %% Functions
-function hf = PlotSolution(X_minT,t_minT,x0,xf)
+function PlotSolution(X_minT,t_minT,x0,xf)
 
     for ii = 1:length(t_minT)
         rel_Pos(ii) = norm(X_minT(ii,1:3)-xf');
@@ -67,7 +68,7 @@ function hf = PlotSolution(X_minT,t_minT,x0,xf)
 end 
 
 
-function Xdot = ThreeDimAircraft(t,X,w,V)
+function Xdot = ThreeDimAircraft(~,X,w,V)
 
 x = X(1:3);
 lambda = X(4:6);
@@ -91,7 +92,7 @@ Xdot = [xDot; lambdaDot];
 end
 
 
-function H = hamiltonian(t,X,w,V)
+function H = hamiltonian(~,X,w,V)
 
 x   = X(:,1:3);
 lambda = X(:,4:6)';
